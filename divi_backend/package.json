@@ -1,0 +1,10 @@
+{
+  "name": "divi-backend",
+  "private": true,
+  "scripts": {
+    "start": "npx supabase start",
+    "stop": "npx supabase stop",
+    "reset": "npx supabase db reset",
+    "status": "npx supabase status"
+  }
+}
