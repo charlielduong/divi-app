@@ -157,7 +157,7 @@ enabled = true
 # in emails.
 site_url = "http://127.0.0.1:8081"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
-# external_url = ""
+external_url = "env(SUPABASE_AUTH_EXTERNAL_URL)"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 additional_redirect_urls = [
   "http://localhost:8081",
@@ -342,7 +342,7 @@ email_optional = false
 enabled = true
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET)"
-redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
+redirect_uri = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_REDIRECT_URI)"
 skip_nonce_check = false
 
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.

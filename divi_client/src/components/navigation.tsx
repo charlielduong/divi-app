@@ -7,6 +7,84 @@ import { colors } from '../theme/theme';
 
 export type TabName = 'home' | 'receipts' | 'activity' | 'profile';
 
+export function DesktopSidebar({
+  selected,
+  onSelect,
+  onCreate,
+}: {
+  selected: TabName;
+  onSelect: (tab: TabName) => void;
+  onCreate: () => void;
+}) {
+  return (
+    <View style={styles.desktopSidebar}>
+      <View style={styles.desktopBrandRow}>
+        <View style={styles.desktopBrandMark}>
+          <Ionicons name="git-compare-outline" size={22} color={colors.surface} />
+        </View>
+        <Text style={styles.desktopBrand}>Divi</Text>
+      </View>
+
+      <View style={styles.desktopNav}>
+        <DesktopNavItem
+          icon="grid-outline"
+          label="Dashboard"
+          active={selected === 'home'}
+          onPress={() => onSelect('home')}
+        />
+        <DesktopNavItem
+          icon="receipt-outline"
+          label="Receipts"
+          active={selected === 'receipts'}
+          onPress={() => onSelect('receipts')}
+        />
+        <DesktopNavItem
+          icon="time-outline"
+          label="Activity"
+          active={selected === 'activity'}
+          onPress={() => onSelect('activity')}
+        />
+        <DesktopNavItem
+          icon="person-outline"
+          label="Profile"
+          active={selected === 'profile'}
+          onPress={() => onSelect('profile')}
+        />
+      </View>
+
+      <View style={styles.desktopSidebarFooter}>
+        <Pressable onPress={onCreate} style={styles.desktopCreateButton}>
+          <Ionicons name="add" size={20} color={colors.surface} />
+          <Text style={styles.desktopCreateLabel}>Create Divi</Text>
+        </Pressable>
+        <Text style={styles.desktopFooterCopy}>Split the receipt. Skip the awkward math.</Text>
+      </View>
+    </View>
+  );
+}
+
+function DesktopNavItem({
+  icon,
+  label,
+  active,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.desktopNavItem, active && styles.desktopNavItemActive]}
+    >
+      <Ionicons name={icon} size={21} color={active ? colors.brandDeep : colors.secondary} />
+      <Text style={[styles.desktopNavLabel, active && styles.desktopNavLabelActive]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export function TabBar({
   selected,
   onSelect,

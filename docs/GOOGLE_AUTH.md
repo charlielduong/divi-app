@@ -14,8 +14,7 @@ Expo app
 
 1. The user taps Google sign-in. The app calls `supabase.auth.signInWithOAuth()` with Google and an app redirect URL.
 2. Supabase opens Google’s authorization page.
-3. Google authenticates the user and redirects to Supabase’s callback URL:
-   `https://<project-ref>.supabase.co/auth/v1/callback`
+3. Google authenticates the user and redirects to the configured Supabase Auth callback URL. For the local simulator stack this is `http://127.0.0.1:54321/auth/v1/callback`; for a phone or deployed environment it must be a reachable HTTPS URL such as `https://api-staging.example.com/auth/v1/callback`.
 4. Supabase verifies the Google response, creates or finds the user, and creates an access/refresh-token session.
 5. Supabase redirects to the app. The Supabase client reads the response and persists the session.
 6. The app listens for auth changes and renders the authenticated or signed-out experience.
@@ -25,9 +24,17 @@ Expo app
 There are two different redirect destinations:
 
 - **Google → Supabase:** configure the Supabase callback URL in the Google Cloud OAuth client.
-- **Supabase → Expo:** add the app redirect URL to Supabase’s allowed redirect URLs. This may be `http://localhost:8081` for Expo web or a custom deep link for a native build.
+- **Supabase → Expo:** add the app redirect URL to Supabase’s allowed redirect URLs. The native app uses `divi://auth/callback`; the web build may use its current browser origin.
 
-In Supabase, configure the Google provider with the Google OAuth client ID and client secret. In Google Cloud, configure the OAuth consent screen and the web OAuth client.
+For local development, `127.0.0.1` works from the iOS Simulator because the simulator shares the Mac's development context. A physical iPhone cannot reach the Mac through `127.0.0.1`. Metro uses LAN mode for the JavaScript bundle, while the current API/Auth path uses an ngrok HTTPS tunnel:
+
+```text
+Google / iPhone → https://<ngrok-host> → Mac:54321 → local Supabase
+```
+
+Start the local stack and tunnel with `npm run start` from `divi_backend` and `ngrok http 54321`. Put the resulting values in the ignored `divi_backend/supabase/.env` as `SUPABASE_AUTH_EXTERNAL_URL=https://<ngrok-host>` and `SUPABASE_AUTH_EXTERNAL_GOOGLE_REDIRECT_URI=https://<ngrok-host>/auth/v1/callback`. Use the same HTTPS hostname as the client's `EXPO_PUBLIC_SUPABASE_URL`, and register the callback in Google Cloud. The tracked `config.toml` reads these values through `env(...)`. The free ngrok hostname is not guaranteed to persist across restarts; use a stable staging hostname before production.
+
+In the local CLI project, configure the Google provider in `divi_backend/supabase/config.toml` and keep the client ID and secret in the ignored `divi_backend/supabase/.env`. In a deployed self-hosted environment, configure the equivalent Auth environment variables on the server. In Google Cloud, configure the OAuth consent screen and a separate web OAuth client for each environment.
 
 ## Environment variables
 

@@ -224,7 +224,7 @@ The testable checklist is defined in [ACCEPTANCE_CRITERIA.md](ACCEPTANCE_CRITERI
 
 ## 9. Architecture and Delivery Summary
 
-The selected foundation is React Native 0.86, React 19, Expo SDK 57, and TypeScript with a planned Supabase/PostgreSQL backend, Supabase Auth/Realtime/Storage, and replaceable application-owned service boundaries. The first local-review milestone is intentionally backend-free and uses deterministic in-memory adapters.
+The selected foundation is React Native 0.86, React 19, Expo SDK 57, and TypeScript with a Supabase/PostgreSQL backend, Supabase Auth, and replaceable application-owned service boundaries. Local development uses the Supabase CLI Docker stack; the current client persists authenticated Divis through the repository layer. Receipt OCR remains on-device and receipt images are not uploaded by the current flow.
 
 The MVP prioritizes a strong reproducible local build. CI, automated App Store submission, direct money movement, and irreversible production deployment are outside current scope.
 

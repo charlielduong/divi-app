@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -43,14 +43,14 @@ export function DiviDetailScreen({
   onBackToEdit,
   onAdjust,
   onSave,
-  onChange,
+  onFinalize,
 }: {
   divi: Divi;
   onBack: () => void;
   onBackToEdit: () => void;
   onAdjust: () => void;
   onSave: (divi: Divi) => void;
-  onChange: (divi: Divi) => void;
+  onFinalize: (divi: Divi) => void;
 }) {
   const [local, setLocal] = useState(divi);
   const [invite, setInvite] = useState(false);
@@ -59,13 +59,17 @@ export function DiviDetailScreen({
   const [expandedItemIds, setExpandedItemIds] = useState<string[]>(
     divi.items.map((item) => item.id),
   );
+
+  useEffect(() => {
+    setLocal(divi);
+  }, [divi]);
+
   const inviteUrl = `https://divi.example/join/${local.id}`;
-  const setAndPersist = (next: Divi) => {
+  const updateLocal = (next: Divi) => {
     setLocal(next);
-    onChange(next);
   };
   const toggleClaim = (itemId: string, participantId: string) =>
-    setAndPersist({
+    updateLocal({
       ...local,
       items: local.items.map((item) =>
         item.id === itemId
@@ -79,7 +83,7 @@ export function DiviDetailScreen({
       ),
     });
   const toggleEveryoneClaim = (itemId: string) =>
-    setAndPersist({
+    updateLocal({
       ...local,
       items: local.items.map((item) => {
         if (item.id !== itemId) return item;
@@ -104,7 +108,13 @@ export function DiviDetailScreen({
     );
   const performFinalize = () => {
     try {
-      setAndPersist({ ...local, allocations: finalizeAllocations(local), state: 'finalized' });
+      const finalized = {
+        ...local,
+        allocations: finalizeAllocations(local),
+        state: 'finalized' as const,
+      };
+      setLocal(finalized);
+      onFinalize(finalized);
     } catch (error) {
       Alert.alert(
         'Not ready to finalize',
@@ -135,7 +145,7 @@ export function DiviDetailScreen({
       money(Math.max(0, allocation.total.minorUnits - allocation.paid.minorUnits)),
       local.title,
     );
-    setAndPersist({
+    updateLocal({
       ...local,
       allocations: local.allocations.map((item) =>
         item.participantId === allocation.participantId
@@ -153,7 +163,7 @@ export function DiviDetailScreen({
       Alert.alert('Add a person', 'Enter a full name to add this person to the Divi.');
       return false;
     }
-    setAndPersist({
+    updateLocal({
       ...local,
       participants: [
         ...local.participants,
