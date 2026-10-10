@@ -159,7 +159,20 @@ Shows significant events such as receipt confirmation, participant joining, clai
 
 ### Profile and settings
 
-Shows display name, image, default currency, optional Venmo username and other external payment identities, authentication methods, privacy controls, sign out, and account deletion.
+Shows display name, image, default currency, optional Venmo username and other external payment identities, authentication methods, privacy controls, sign out, account deletion, and (when implemented) access to **Recently Deleted** Divis.
+
+### Planned: delete and recover a Divi
+
+This is a future, post-MVP flow:
+
+1. An authorized user chooses to delete a Divi and confirms the destructive action.
+2. Divi removes the item from active lists and shows a bottom confirmation banner/toast with a short countdown.
+3. The confirmation includes **Undo**. Selecting it before the countdown expires restores the Divi to its prior lifecycle state.
+4. If the countdown expires, Divi places the record in **Recently Deleted** rather than permanently deleting it.
+5. The user can open **Profile/Settings → Recently Deleted**, review deleted Divis, and restore an eligible record.
+6. The UI clearly distinguishes a recoverable deletion from permanent deletion. A future retention policy determines when a record may be permanently removed.
+
+The flow must handle network failure, stale state, duplicate taps, unauthorized restore/delete attempts, and Divis with outstanding balances or other participants without silently changing financial history.
 
 ## 12. Screen-State Requirements
 

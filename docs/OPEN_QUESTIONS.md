@@ -47,6 +47,9 @@ These decisions are intentionally unresolved. Defaults may be used for local dev
 ## Privacy and Operations
 
 - What are the production retention periods for receipts, parse metadata, financial history, and deleted-account data?
+- For planned Divi deletion recovery, how long should the undo confirmation remain visible before the Divi moves to Recently Deleted?
+- How long should a Divi remain in Recently Deleted before permanent deletion, and may Divis with outstanding balances, active participants, or unresolved settlements be permanently deleted?
+- Should restoring a Divi return it to its exact prior lifecycle state, and which users are authorized to delete or restore it?
 - Is export required before public release even though it is outside the current MVP?
 - Which privacy policy and terms will govern App Store/TestFlight use?
 - Which analytics and crash-reporting provider, if any, is approved?
