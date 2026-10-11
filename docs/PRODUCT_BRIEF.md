@@ -222,7 +222,23 @@ MVP completion requires the full receipt-to-settlement journey to work across th
 
 The testable checklist is defined in [ACCEPTANCE_CRITERIA.md](ACCEPTANCE_CRITERIA.md).
 
-## 9. Architecture and Delivery Summary
+## 9. Planned Future Features
+
+### Recoverable Divi deletion
+
+Planned for a post-MVP release: deleting a Divi should use a recoverable two-step flow rather than immediately removing it.
+
+- Immediately after deletion, show a small bottom confirmation banner/toast with a short countdown and an **Undo** action.
+- While the countdown is active, **Undo** restores the Divi to its previous lifecycle state and dismisses the confirmation.
+- When the countdown expires, move the Divi into a **Recently Deleted** area instead of permanently deleting it.
+- Make **Recently Deleted** accessible from the Profile/Settings area.
+- Allow the user to restore a recently deleted Divi, subject to authorization and lifecycle rules.
+- Keep recently deleted records separate from normal active/history lists, and define a future retention period before permanent deletion.
+- Preserve the financial-history and participant safeguards already required for deleted or anonymized records; deleting a user's copy of a Divi must not corrupt another participant's history.
+
+The exact countdown duration, retention period, permanent-deletion policy, and behavior for Divis with active participants or unsettled balances remain open decisions. See [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
+
+## 10. Architecture and Delivery Summary
 
 The selected foundation is React Native 0.86, React 19, Expo SDK 57, and TypeScript with a Supabase/PostgreSQL backend, Supabase Auth, and replaceable application-owned service boundaries. Local development uses the Supabase CLI Docker stack; the current client persists authenticated Divis through the repository layer. Receipt OCR remains on-device and receipt images are not uploaded by the current flow.
 
@@ -230,6 +246,6 @@ The MVP prioritizes a strong reproducible local build. CI, automated App Store s
 
 Implementation structure, security, data, deployment, and engineering rules are defined in [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## 10. Open Decisions
+## 11. Open Decisions
 
 Provider, privacy, App Clip, Venmo, brand, and production-deployment decisions that are not yet resolved are tracked in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md). Non-material implementation details may use the simplest documented, replaceable default; decisions affecting financial correctness, security, privacy, external cost, or irreversible state require explicit approval.

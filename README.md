@@ -129,6 +129,16 @@ Choose **Try local demo**, tap the center **Create Divi** action, then take a re
 
 Use the installed **Divi development app**, not Expo Go. Keep the iPhone and Mac on the same Wi-Fi.
 
+### Rebuild after adding native modules
+
+The onboarding gradient uses `expo-linear-gradient`. If an existing development app shows `Unimplemented Component: <ViewManagerAdapter_ExpoLinearGradient>`, the JavaScript bundle is newer than the installed native binary. Rebuild the development app once from `divi_client`:
+
+```sh
+npm run ios:device
+```
+
+Until that rebuild, the onboarding screen uses a solid Divi-green fallback on native while retaining the gradient on web.
+
 1. Open this project folder in VS Code.
 2. In the project folder, start Metro with the development-client option:
 

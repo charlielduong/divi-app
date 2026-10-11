@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { DiviLogo } from './DiviLogo';
 import { formatMoney, Money } from '../domain/models';
 import { appStyles as styles } from '../theme/appStyles';
 import { colors } from '../theme/theme';
@@ -20,7 +21,7 @@ export function DesktopSidebar({
     <View style={styles.desktopSidebar}>
       <View style={styles.desktopBrandRow}>
         <View style={styles.desktopBrandMark}>
-          <Ionicons name="git-compare-outline" size={22} color={colors.surface} />
+          <DiviLogo size={40} accessibilityLabel="Divi logo" />
         </View>
         <Text style={styles.desktopBrand}>Divi</Text>
       </View>

@@ -23,7 +23,7 @@ Supabase SDK calls must remain behind application-owned repositories and service
 
 ### Divi
 
-Stores creator, payer, currency, lifecycle state, version, source receipt, confirmed totals, and timestamps. State transitions are explicit and validated.
+Stores creator, payer, currency, lifecycle state, version, source receipt, confirmed totals, and timestamps. State transitions are explicit and validated. A future recoverable-deletion feature should use an auditable soft-delete state/tombstone (including deletion time and actor) so a Divi can move from active lists to Recently Deleted without losing its financial record.
 
 ### Participant
 
@@ -59,6 +59,16 @@ Stores optional provider-specific identifiers associated with a participant, suc
 ### Invitation and activity
 
 Invitations store a hashed scoped token, expiry, revocation, and Divi ID. Activity entries record important domain changes with sanitized metadata.
+
+### Planned deletion recovery
+
+Deletion recovery is not part of the MVP, but future implementation should define:
+
+- A short client-visible undo window after a confirmed delete, represented as a mutation with an idempotency key rather than a client-only flag.
+- A soft-deleted/Recently Deleted state that is excluded from active lists and normal history by default.
+- Authorized restore operations that validate the Divi's prior lifecycle state, current version, participant access, and settlement status.
+- Audit entries for delete, undo, move-to-recently-deleted, restore, and eventual permanent deletion.
+- Retention and permanent-deletion jobs that do not remove records still required for another user's financial history.
 
 ## 3. Money and Allocation
 
