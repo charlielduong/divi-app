@@ -9,15 +9,43 @@ import {
   SafeAreaView,
   ScrollView,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import type { User } from '@supabase/supabase-js';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SvgUri } from 'react-native-svg';
 import { Divi, formatMoney } from '../domain/models';
 import { appStyles as styles } from '../theme/appStyles';
 import { colors } from '../theme/theme';
+
+const onboardingLogoAsset = require('../../assets/icon-no-bg.svg');
+
+function OnboardingLogo() {
+  const uri =
+    typeof onboardingLogoAsset === 'number'
+      ? Image.resolveAssetSource(onboardingLogoAsset).uri
+      : typeof onboardingLogoAsset === 'string'
+        ? onboardingLogoAsset
+        : (onboardingLogoAsset as { uri: string }).uri;
+
+  return <SvgUri accessibilityLabel="Divi receipt logo" height={96} uri={uri} width={96} />;
+}
+
+function OnboardingBackground({ children }: { children: React.ReactNode }) {
+  return (
+    <LinearGradient
+      colors={['#A7E878', '#65C94A', '#2E9A4D']}
+      locations={[0, 0.48, 1]}
+      start={{ x: 0.05, y: 0 }}
+      end={{ x: 0.9, y: 1 }}
+      style={styles.authShell}
+    >
+      {children}
+    </LinearGradient>
+  );
+}
 
 export function WelcomeScreen({
   onGoogleSignIn,
@@ -28,28 +56,23 @@ export function WelcomeScreen({
   isLoading: boolean;
   error: string | null;
 }) {
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === 'web' && width >= 900;
-
   return (
-    <SafeAreaView style={styles.authScreen}>
-      <StatusBar style="dark" />
-      <View style={[styles.authShell, isDesktop && styles.authShellDesktop]}>
+    <OnboardingBackground>
+      <SafeAreaView style={styles.authScreen}>
+        <StatusBar style="light" />
         <View style={styles.authMain}>
-          <View style={styles.authBrandRow}>
-            <View style={styles.authBrandMark}>
-              <Ionicons name="git-compare-outline" size={20} color={colors.surface} />
-            </View>
-            <Text style={styles.authBrand}>Divi</Text>
+          <View style={styles.authContent}>
+            <OnboardingLogo />
+            <Text accessibilityRole="header" style={styles.authTitle}>
+              Welcome to Divi
+            </Text>
+            <Text style={styles.authSubtitle}>Restaurant bill-splitting made simple</Text>
           </View>
 
-          <View style={styles.authContent}>
-            <Text style={styles.authTitle}>Welcome to Divi</Text>
-            <Text style={styles.authSubtitle}>
-              Split receipts together, without the awkward math.
-            </Text>
+          <View style={styles.authActions}>
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="Sign up with Google"
               disabled={isLoading}
               onPress={onGoogleSignIn}
               style={({ pressed }) => [
@@ -59,34 +82,19 @@ export function WelcomeScreen({
             >
               <Ionicons name="logo-google" size={20} color="#4285F4" />
               <Text style={styles.googleButtonLabel}>
-                {isLoading ? 'Opening Google…' : 'Continue with Google'}
+                {isLoading ? 'Opening Google…' : 'Sign up with Google'}
               </Text>
             </Pressable>
             {error ? <Text style={styles.authError}>{error}</Text> : null}
+            <Text style={styles.authTerms}>
+              By creating an account you accept{'\n'}
+              <Text style={styles.authTermsLink}>Terms of Use</Text> and{' '}
+              <Text style={styles.authTermsLink}>Privacy Policy</Text>.
+            </Text>
           </View>
-
-          <Text style={styles.authTerms}>
-            By continuing with Google, you agree to our{' '}
-            <Text style={styles.authTermsLink}>Terms of Use</Text> and{' '}
-            <Text style={styles.authTermsLink}>Privacy Policy</Text>.
-          </Text>
         </View>
-
-        {isDesktop && (
-          <ImageBackground
-            source={require('../../assets/divi-login-panel.png')}
-            resizeMode="cover"
-            style={styles.authVisual}
-            imageStyle={styles.authVisualImage}
-          >
-            <View style={styles.authVisualCopy}>
-              <Text style={styles.authVisualEyebrow}>MADE FOR THE TABLE</Text>
-              <Text style={styles.authVisualTitle}>Good plans. Clear totals. Happy groups.</Text>
-            </View>
-          </ImageBackground>
-        )}
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </OnboardingBackground>
   );
 }
 
