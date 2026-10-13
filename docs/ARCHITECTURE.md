@@ -70,6 +70,20 @@ Deletion recovery is not part of the MVP, but future implementation should defin
 - Audit entries for delete, undo, move-to-recently-deleted, restore, and eventual permanent deletion.
 - Retention and permanent-deletion jobs that do not remove records still required for another user's financial history.
 
+### Planned receipt-scan entitlements
+
+Receipt-scan monetization is not part of the MVP, but future implementation should support a daily free allowance and one-time purchased scan packs without coupling billing rules to the client.
+
+- Model scan entitlements as an auditable server-side ledger or equivalent authoritative records, including entitlement type (`daily_free` or `purchased_pack`), quantity granted, quantity consumed, source transaction, timestamps, and user ID.
+- Grant one daily free scan per user per product-local calendar day; unused daily scans do not roll over.
+- Support fixed one-time packs, initially five or ten scans, with provider transaction IDs and idempotent processing for purchases, refunds, chargebacks, and restores.
+- Apply a documented consumption order: daily free scans first, then purchased scans, unless the user explicitly selects a different eligible entitlement.
+- Reserve and consume a scan atomically on the server before invoking paid receipt parsing. Failed or cancelled parsing must release or refund the reservation according to a documented retry policy.
+- Enforce scan availability through authoritative backend operations and return the remaining daily and purchased balances to the client; the client must not be able to award or decrement scans locally.
+- Keep manual receipt entry available without a scan entitlement.
+- Add a replaceable billing service boundary for App Store/Google Play purchases, receipt validation, refunds, and restore-purchases flows. Billing-provider types must not escape the service boundary.
+- Define product IDs, prices, tax handling, account recovery, family sharing behavior, expiration/refund rules, and the product timezone before production launch.
+
 ## 3. Money and Allocation
 
 - Represent money as integer minor units with an ISO 4217 currency code.

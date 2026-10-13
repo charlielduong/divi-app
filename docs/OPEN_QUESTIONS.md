@@ -17,6 +17,15 @@ These decisions are intentionally unresolved. Defaults may be used for local dev
 - May receipt images be sent to a third-party AI provider, and what retention terms are required?
 - Which confidence threshold should trigger stronger manual-review messaging?
 
+## Receipt-scan Monetization
+
+- What are the final prices and product IDs for the five- and ten-scan one-time packs?
+- Should purchased scans expire, and how should refunds, chargebacks, restored purchases, and account deletion affect remaining scans?
+- Which product timezone defines the daily free-scan reset, especially when a user travels?
+- Should users be able to choose purchased scans instead of consuming their daily free scan?
+- Which in-app purchase provider and server-side receipt-validation service will be used?
+- Should the daily free scan be consumed when analysis starts, when it succeeds, or only after the user accepts the extracted receipt?
+
 ## Invitations and App Clip
 
 - Should the App Clip remain part of the first production MVP now that the full app is React Native, or move to a later native companion milestone?

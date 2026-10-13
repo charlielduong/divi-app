@@ -224,6 +224,18 @@ The testable checklist is defined in [ACCEPTANCE_CRITERIA.md](ACCEPTANCE_CRITERI
 
 ## 9. Planned Future Features
 
+### Receipt-scan monetization
+
+Planned for a post-MVP release: provide each user with one complimentary receipt scan per day, alongside optional one-time scan packs for users who do not want a monthly subscription.
+
+- The daily allowance refreshes once per calendar day in the user's configured product timezone and does not accumulate when unused.
+- Offer fixed one-time packs, such as five or ten additional scans, at prices approved before launch.
+- Purchased scans are consumable entitlements and should remain available until used, subject to a future refund, expiration, and account-deletion policy.
+- Consume the daily allowance before purchased scans unless the user explicitly chooses otherwise.
+- Show the user which allowance will be consumed before starting a scan, and provide a clear purchase path when no scan entitlement remains.
+- Record entitlement grants, purchases, consumption, refunds, and reversals server-side with idempotency keys; never rely on a client-maintained scan counter.
+- Receipt scanning should remain manually available when the user has no scan entitlement, so monetization never prevents manual receipt entry.
+
 ### Recoverable Divi deletion
 
 Planned for a post-MVP release: deleting a Divi should use a recoverable two-step flow rather than immediately removing it.
