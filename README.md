@@ -60,31 +60,9 @@ There are two different local network paths:
 
 The iOS development build declares the local-network usage description and Expo Bonjour service in `divi_client/app.json`. Rebuild the native app after changing that file with `npm run ios:device`; toggling **Settings → Divi → Local Network** alone does not change the native binary.
 
-The loopback Google callback is suitable for simulator/browser testing but is not reachable from a physical iPhone. For phone-based Google sign-in, use the ngrok development tunnel described below, or a deployed staging instance. Register that host's `/auth/v1/callback` URL in Google Cloud and point the phone's `.env` at that host. Keep `divi://auth/callback` as the app's native redirect URL.
+For physical-device and production Google sign-in, use the hosted Supabase project URL in the client environment and configure the hosted Supabase Auth callback in Google Cloud. The native callback remains `divi://auth/callback`.
 
-### ngrok development tunnel
-
-The current physical-iPhone development setup uses ngrok as the HTTPS tunnel. ngrok gives the local Supabase API a public HTTPS address so the phone and Google OAuth can reach the Mac:
-
-```text
-Google / iPhone → https://<ngrok-host> → Mac:54321 → local Supabase
-```
-
-Start Supabase, then expose its API gateway:
-
-```sh
-cd divi_backend
-npm run start
-ngrok http 54321
-```
-
-Copy the HTTPS forwarding URL and use it in all three places:
-
-1. `divi_backend/supabase/.env`: set `SUPABASE_AUTH_EXTERNAL_URL` to the ngrok URL and `SUPABASE_AUTH_EXTERNAL_GOOGLE_REDIRECT_URI` to the ngrok URL ending in `/auth/v1/callback`. The tracked `config.toml` reads these values through `env(...)` references.
-2. Google Cloud: add that exact `/auth/v1/callback` URL as an authorized redirect URI.
-3. `divi_client/.env`: set `EXPO_PUBLIC_SUPABASE_URL` to the ngrok HTTPS URL.
-
-Restart Supabase after changing `config.toml`, then start Metro separately with `npx expo start --dev-client --lan`. The app's native callback remains `divi://auth/callback`. Free ngrok hostnames can change when the tunnel restarts, so update these values whenever the hostname changes. A stable staging hostname should replace ngrok before production.
+The local Supabase stack is intended for simulator/browser development. Its local Google callback is `http://127.0.0.1:54321/auth/v1/callback`; a physical device should use the hosted Supabase environment instead of the local stack for Google sign-in.
 
 The local backend keeps the database, API, Studio, and Auth services enabled. Analytics,
 Realtime, Storage, local SMTP, and Edge Functions are disabled in `divi_backend/supabase/config.toml` until
@@ -99,10 +77,10 @@ Google sign-in is implemented through Supabase Auth and the Expo `divi://auth/ca
 To enable it locally:
 
 1. Create a Google OAuth **Web application** client in Google Cloud.
-2. Add `http://127.0.0.1:54321/auth/v1/callback` as an authorized redirect URI.
-3. Copy `divi_backend/supabase/.env.example` to `divi_backend/supabase/.env` and add the Google client ID and secret.
-4. Set `enabled = true` in `[auth.external.google]` in `divi_backend/supabase/config.toml`.
-5. Restart Supabase from `divi_backend` with `npm run stop && npm run start`.
+2. For the hosted environment, add `https://<project-ref>.supabase.co/auth/v1/callback` as an authorized redirect URI and enable Google in the Supabase Dashboard.
+3. For local simulator testing, add `http://127.0.0.1:54321/auth/v1/callback`, copy `divi_backend/supabase/.env.example` to `divi_backend/supabase/.env`, and add the Google client ID and secret.
+4. For local testing, set `enabled = true` in `[auth.external.google]` in `divi_backend/supabase/config.toml`.
+5. Restart Supabase from `divi_backend` with `npm run stop && npm run start` when using the local stack.
 6. Rebuild the native app after changing the Expo scheme or native dependencies:
 
 ```sh

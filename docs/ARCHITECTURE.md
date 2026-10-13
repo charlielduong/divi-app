@@ -205,7 +205,7 @@ Prefer Expo-compatible libraries and standard promises. Avoid floating-point mon
 - Include database schema, migrations, and representative seed/preview data.
 - Provide deterministic development adapters when external credentials or Apple entitlements are unavailable.
 - Document setup for Supabase, authentication providers, OCR/reasoning, storage, universal links, App Clip association, and Venmo handoff.
-- The iOS Simulator may use `http://127.0.0.1:54321`; a physical iPhone uses Metro LAN mode for the JavaScript bundle and the current ngrok HTTPS tunnel for the local Supabase API/Auth path. Local Google OAuth on a phone requires that reachable HTTPS tunnel because the loopback callback is not reachable from the phone. The ngrok hostname must be updated in the client environment, Supabase Auth configuration, and Google Cloud callback registration when it changes.
+- The iOS Simulator may use `http://127.0.0.1:54321`; a physical iPhone uses Metro LAN mode for the JavaScript bundle and the hosted Supabase project for the API/Auth path. Google OAuth uses the hosted Supabase callback in phone and production environments, while the loopback callback is reserved for simulator/browser testing.
 
 MVP prioritizes a reliable local build and test environment. CI, automated App Store submission, production payment processing, and fully automated production infrastructure remain out of scope until a deployment environment is approved.
 

@@ -1,4 +1,7 @@
 import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
   S3Client,
   PutObjectCommand,
 } from "@aws-sdk/client-s3";
@@ -13,6 +16,13 @@ const region = process.env.AWS_REGION;
 const resultsPrefix = process.env.RESULTS_PREFIX ?? "results/";
 const rawPrefix = process.env.RAW_PREFIX ?? "raw/";
 const saveRawResponse = process.env.SAVE_RAW_RESPONSE === "true";
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const receiptBucket = process.env.RECEIPT_BUCKET;
+const maxReceiptBytes = positiveInteger(
+  process.env.MAX_RECEIPT_BYTES,
+  8 * 1024 * 1024,
+);
 
 const s3 = new S3Client({
   region,
@@ -24,10 +34,10 @@ const textract = new TextractClient({
 
 export const handler = async (event) => {
   const records = event?.Records ?? [];
+  let processed = 0;
 
   for (const record of records) {
     const bucket = record?.s3?.bucket?.name;
-
     const encodedKey = record?.s3?.object?.key;
 
     if (!bucket || !encodedKey) {
@@ -36,75 +46,248 @@ export const handler = async (event) => {
     }
 
     const key = decodeURIComponent(encodedKey.replace(/\+/g, " "));
+    const objectIdentity = parseReceiptObjectKey(key);
 
-    if (!key.startsWith("incoming/")) {
-      console.log(`Skipping object outside incoming/: ${key}`);
+    if (!receiptBucket || bucket !== receiptBucket || !objectIdentity) {
+      console.warn(
+        "Skipping receipt event outside the configured upload boundary.",
+      );
       continue;
     }
 
-    console.log(
-      JSON.stringify({
-        message: "Analyzing receipt",
+    const { attemptId } = objectIdentity;
+
+    try {
+      await validateReceiptObject(
         bucket,
         key,
-      }),
-    );
+        attemptId,
+        record?.s3?.object?.size,
+      );
 
-    const textractResponse = await textract.send(
-      new AnalyzeExpenseCommand({
-        Document: {
-          S3Object: {
-            Bucket: bucket,
-            Name: key,
+      await updateParseAttempt(attemptId, key, {
+        status: "processing",
+        error_message: null,
+      });
+
+      console.log(JSON.stringify({ message: "Analyzing receipt", attemptId }));
+
+      const textractResponse = await textract.send(
+        new AnalyzeExpenseCommand({
+          Document: {
+            S3Object: {
+              Bucket: bucket,
+              Name: key,
+            },
           },
-        },
-      }),
-    );
+        }),
+      );
 
-    const normalizedReceipt =
-      normalizeAnalyzeExpense(textractResponse);
+      const normalizedReceipt = normalizeAnalyzeExpense(textractResponse);
 
-    const outputKey = buildOutputKey(key, resultsPrefix);
-    const rawKey = buildOutputKey(key, rawPrefix);
+      const outputKey = buildOutputKey(key, resultsPrefix);
+      const rawKey = buildOutputKey(key, rawPrefix);
 
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: outputKey,
-        ContentType: "application/json",
-        ServerSideEncryption: "AES256",
-        Body: JSON.stringify(normalizedReceipt, null, 2),
-      }),
-    );
-
-    if (saveRawResponse) {
       await s3.send(
         new PutObjectCommand({
           Bucket: bucket,
-          Key: rawKey,
+          Key: outputKey,
           ContentType: "application/json",
           ServerSideEncryption: "AES256",
-          Body: JSON.stringify(textractResponse, null, 2),
+          Body: JSON.stringify(normalizedReceipt, null, 2),
         }),
       );
-    }
 
-    console.log(
-      JSON.stringify({
-        message: "Saved normalized receipt",
-        bucket,
-        sourceKey: key,
-        outputKey,
-        rawKey: saveRawResponse ? rawKey : null,
-        receipt: normalizedReceipt,
-      }),
-    );
+      if (saveRawResponse) {
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: bucket,
+            Key: rawKey,
+            ContentType: "application/json",
+            ServerSideEncryption: "AES256",
+            Body: JSON.stringify(textractResponse, null, 2),
+          }),
+        );
+      }
+
+      await updateParseAttempt(attemptId, key, {
+        status: "ready",
+        result_key: outputKey,
+        parsed_receipt: normalizedReceipt,
+        completed_at: new Date().toISOString(),
+        error_message: null,
+      });
+
+      console.log(
+        JSON.stringify({
+          message: "Saved normalized receipt",
+          attemptId,
+          rawResponseSaved: saveRawResponse,
+        }),
+      );
+      processed += 1;
+    } catch (error) {
+      const validationFailure = error instanceof ReceiptValidationError;
+
+      try {
+        await updateParseAttempt(attemptId, key, {
+          status: "failed",
+          error_message: validationFailure
+            ? error.publicMessage
+            : "Receipt analysis failed. Please try again.",
+          completed_at: new Date().toISOString(),
+        });
+      } catch (statusError) {
+        logSafeError(
+          "Could not mark receipt analysis as failed",
+          attemptId,
+          statusError,
+        );
+      }
+
+      if (validationFailure) {
+        try {
+          await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+        } catch (deleteError) {
+          logSafeError(
+            "Could not delete rejected receipt",
+            attemptId,
+            deleteError,
+          );
+        }
+      }
+
+      logSafeError("Receipt analysis failed", attemptId, error);
+    }
   }
 
   return {
-    processed: records.length,
+    processed,
+    received: records.length,
   };
 };
+
+class ReceiptValidationError extends Error {
+  constructor(publicMessage) {
+    super(publicMessage);
+    this.name = "ReceiptValidationError";
+    this.publicMessage = publicMessage;
+  }
+}
+
+function positiveInteger(value, fallback) {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseReceiptObjectKey(key) {
+  const match = key.match(
+    /^incoming\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/receipt\.jpg$/i,
+  );
+
+  return match ? { userId: match[1], attemptId: match[2] } : null;
+}
+
+async function validateReceiptObject(bucket, key, attemptId, eventSize) {
+  if (Number(eventSize) > maxReceiptBytes) {
+    throw new ReceiptValidationError(
+      "The receipt image is too large. Please try a smaller image.",
+    );
+  }
+
+  const head = await s3.send(
+    new HeadObjectCommand({ Bucket: bucket, Key: key }),
+  );
+  const contentLength = Number(head.ContentLength);
+
+  if (
+    !Number.isSafeInteger(contentLength) ||
+    contentLength < 1 ||
+    contentLength > maxReceiptBytes
+  ) {
+    throw new ReceiptValidationError(
+      "The receipt image is too large. Please try a smaller image.",
+    );
+  }
+
+  if (
+    head.ContentType !== "image/jpeg" ||
+    head.ServerSideEncryption !== "AES256" ||
+    head.Metadata?.["attempt-id"] !== attemptId
+  ) {
+    throw new ReceiptValidationError(
+      "The receipt image could not be validated. Please try again.",
+    );
+  }
+
+  const object = await s3.send(
+    new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Range: "bytes=0-2",
+    }),
+  );
+  const signature = object.Body
+    ? await object.Body.transformToByteArray()
+    : new Uint8Array();
+
+  if (
+    signature.length !== 3 ||
+    signature[0] !== 0xff ||
+    signature[1] !== 0xd8 ||
+    signature[2] !== 0xff
+  ) {
+    throw new ReceiptValidationError(
+      "The receipt image is not a valid JPEG. Please choose another image.",
+    );
+  }
+}
+
+function logSafeError(message, attemptId, error) {
+  console.error(
+    JSON.stringify({
+      message,
+      attemptId,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      httpStatusCode: error?.$metadata?.httpStatusCode ?? null,
+    }),
+  );
+}
+
+async function updateParseAttempt(attemptId, sourceKey, patch) {
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    throw new Error(
+      "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for parse status updates.",
+    );
+  }
+
+  const response = await fetch(
+    `${supabaseUrl}/rest/v1/receipt_parse_attempts?id=eq.${encodeURIComponent(attemptId)}` +
+      `&source_key=eq.${encodeURIComponent(sourceKey)}&select=id`,
+    {
+      method: "PATCH",
+      headers: {
+        apikey: supabaseServiceRoleKey,
+        Authorization: `Bearer ${supabaseServiceRoleKey}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(patch),
+    },
+  );
+
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new Error(
+      `Could not update receipt parse attempt (${response.status}).`,
+    );
+  }
+
+  const updatedRows = await response.json();
+  if (!Array.isArray(updatedRows) || updatedRows.length !== 1) {
+    throw new Error("Receipt parse attempt did not match the uploaded object.");
+  }
+}
 
 function normalizeAnalyzeExpense(response) {
   const documents = response?.ExpenseDocuments ?? [];

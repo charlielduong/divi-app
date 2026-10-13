@@ -26,13 +26,9 @@ There are two different redirect destinations:
 - **Google → Supabase:** configure the Supabase callback URL in the Google Cloud OAuth client.
 - **Supabase → Expo:** add the app redirect URL to Supabase’s allowed redirect URLs. The native app uses `divi://auth/callback`; the web build may use its current browser origin.
 
-For local development, `127.0.0.1` works from the iOS Simulator because the simulator shares the Mac's development context. A physical iPhone cannot reach the Mac through `127.0.0.1`. Metro uses LAN mode for the JavaScript bundle, while the current API/Auth path uses an ngrok HTTPS tunnel:
+For local development, `127.0.0.1` works from the iOS Simulator because the simulator shares the Mac's development context. A physical iPhone should use the hosted Supabase project for the API and Google Auth path. Configure `https://<project-ref>.supabase.co/auth/v1/callback` in Google Cloud and use the same hosted project URL in the client's `EXPO_PUBLIC_SUPABASE_URL`. The native app redirect remains `divi://auth/callback`.
 
-```text
-Google / iPhone → https://<ngrok-host> → Mac:54321 → local Supabase
-```
-
-Start the local stack and tunnel with `npm run start` from `divi_backend` and `ngrok http 54321`. Put the resulting values in the ignored `divi_backend/supabase/.env` as `SUPABASE_AUTH_EXTERNAL_URL=https://<ngrok-host>` and `SUPABASE_AUTH_EXTERNAL_GOOGLE_REDIRECT_URI=https://<ngrok-host>/auth/v1/callback`. Use the same HTTPS hostname as the client's `EXPO_PUBLIC_SUPABASE_URL`, and register the callback in Google Cloud. The tracked `config.toml` reads these values through `env(...)`. The free ngrok hostname is not guaranteed to persist across restarts; use a stable staging hostname before production.
+The local Supabase stack remains available for simulator/browser development. Its local Google callback is `http://127.0.0.1:54321/auth/v1/callback`; configure that callback separately in Google Cloud when using the local stack. The tracked `config.toml` reads the local callback values from the ignored `divi_backend/supabase/.env`.
 
 In the local CLI project, configure the Google provider in `divi_backend/supabase/config.toml` and keep the client ID and secret in the ignored `divi_backend/supabase/.env`. In a deployed self-hosted environment, configure the equivalent Auth environment variables on the server. In Google Cloud, configure the OAuth consent screen and a separate web OAuth client for each environment.
 
