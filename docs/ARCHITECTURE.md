@@ -70,6 +70,20 @@ Deletion recovery is not part of the MVP, but future implementation should defin
 - Audit entries for delete, undo, move-to-recently-deleted, restore, and eventual permanent deletion.
 - Retention and permanent-deletion jobs that do not remove records still required for another user's financial history.
 
+### Planned receipt-scan entitlements
+
+Receipt-scan monetization is not part of the MVP, but future implementation should support a daily free allowance and one-time purchased scan packs without coupling billing rules to the client.
+
+- Model scan entitlements as an auditable server-side ledger or equivalent authoritative records, including entitlement type (`daily_free` or `purchased_pack`), quantity granted, quantity consumed, source transaction, timestamps, and user ID.
+- Grant one daily free scan per user per product-local calendar day; unused daily scans do not roll over.
+- Support fixed one-time packs, initially five or ten scans, with provider transaction IDs and idempotent processing for purchases, refunds, chargebacks, and restores.
+- Apply a documented consumption order: daily free scans first, then purchased scans, unless the user explicitly selects a different eligible entitlement.
+- Reserve and consume a scan atomically on the server before invoking paid receipt parsing. Failed or cancelled parsing must release or refund the reservation according to a documented retry policy.
+- Enforce scan availability through authoritative backend operations and return the remaining daily and purchased balances to the client; the client must not be able to award or decrement scans locally.
+- Keep manual receipt entry available without a scan entitlement.
+- Add a replaceable billing service boundary for App Store/Google Play purchases, receipt validation, refunds, and restore-purchases flows. Billing-provider types must not escape the service boundary.
+- Define product IDs, prices, tax handling, account recovery, family sharing behavior, expiration/refund rules, and the product timezone before production launch.
+
 ## 3. Money and Allocation
 
 - Represent money as integer minor units with an ISO 4217 currency code.
@@ -191,7 +205,7 @@ Prefer Expo-compatible libraries and standard promises. Avoid floating-point mon
 - Include database schema, migrations, and representative seed/preview data.
 - Provide deterministic development adapters when external credentials or Apple entitlements are unavailable.
 - Document setup for Supabase, authentication providers, OCR/reasoning, storage, universal links, App Clip association, and Venmo handoff.
-- The iOS Simulator may use `http://127.0.0.1:54321`; a physical iPhone uses Metro LAN mode for the JavaScript bundle and the current ngrok HTTPS tunnel for the local Supabase API/Auth path. Local Google OAuth on a phone requires that reachable HTTPS tunnel because the loopback callback is not reachable from the phone. The ngrok hostname must be updated in the client environment, Supabase Auth configuration, and Google Cloud callback registration when it changes.
+- The iOS Simulator may use `http://127.0.0.1:54321`; a physical iPhone uses Metro LAN mode for the JavaScript bundle and the hosted Supabase project for the API/Auth path. Google OAuth uses the hosted Supabase callback in phone and production environments, while the loopback callback is reserved for simulator/browser testing.
 
 MVP prioritizes a reliable local build and test environment. CI, automated App Store submission, production payment processing, and fully automated production infrastructure remain out of scope until a deployment environment is approved.
 

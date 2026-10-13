@@ -47,6 +47,9 @@ yarn-error.log*
 pnpm-debug.log*
 *.log
 
+# Generated AWS Lambda deployment artifacts
+divi_backend/aws/lambdas/*/function.zip
+
 # Editors and operating systems
 .DS_Store
 Thumbs.db

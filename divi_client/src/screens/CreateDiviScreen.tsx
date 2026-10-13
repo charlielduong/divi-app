@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
-import { recognizeText } from 'expo-ocr-kit';
 import { Ionicons } from '@expo/vector-icons';
 import { Header, TotalRow } from '../components/navigation';
 import { ReceiptPeek } from '../components/ReceiptPeek';
@@ -28,9 +27,9 @@ import {
 } from '../domain/models';
 import {
   emptyReceiptDraft,
-  parseReceiptText,
   receiptDraftFromParsed,
 } from '../services/receiptParser';
+import { analyzeReceiptRemotely } from '../services/receiptAnalysis';
 import { appStyles as styles } from '../theme/appStyles';
 import { colors, spacing } from '../theme/theme';
 
@@ -97,8 +96,7 @@ export function CreateDiviScreen({
     setStage('parsing');
     setParseNotice(null);
     try {
-      const result = await recognizeText(receiptImageUri);
-      const parsed = parseReceiptText(result.text, result.blocks);
+      const parsed = await analyzeReceiptRemotely(receiptImageUri);
       setDraft(receiptDraftFromParsed(parsed, receiptImageUri));
       if (parsed.items.length === 0) {
         setParseNotice(
@@ -182,7 +180,7 @@ export function CreateDiviScreen({
           <ActivityIndicator color={colors.brandDeep} size="large" />
           <Text style={styles.pageTitle}>Reading your receipt…</Text>
           <Text style={styles.centerCopy}>
-            The image stays on this device. You’ll review every item before anyone can claim it.
+            Uploading securely and extracting the receipt details. You’ll review every item before anyone can claim it.
           </Text>
         </View>
       )}
