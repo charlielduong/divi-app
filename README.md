@@ -64,9 +64,9 @@ For physical-device and production Google sign-in, use the hosted Supabase proje
 
 The local Supabase stack is intended for simulator/browser development. Its local Google callback is `http://127.0.0.1:54321/auth/v1/callback`; a physical device should use the hosted Supabase environment instead of the local stack for Google sign-in.
 
-The local backend keeps the database, API, Studio, and Auth services enabled. Analytics,
-Realtime, Storage, local SMTP, and Edge Functions are disabled in `divi_backend/supabase/config.toml` until
-the app needs them.
+The local backend keeps the database, API, Studio, and Auth enabled. Analytics,
+Realtime, Storage, local SMTP, and Edge Runtime remain disabled in
+`divi_backend/supabase/config.toml` until the app needs them.
 
 Use `npm run stop` to stop the containers, `npm run status` to inspect them, and `npm run reset` to
 recreate the database from migrations and seed data. Run these commands from `divi_backend`.
@@ -165,3 +165,22 @@ npm run export:web
 - Production credentials, native App Clip support, and deployment are intentionally outside this local walkthrough. A production deployment should use a separate HTTPS Supabase host and environment rather than exposing the local CLI stack.
 
 See `docs/` for product, flow, architecture, design, acceptance, and open-question specifications.
+
+### Remove the retired merchant-photo integration
+
+The app no longer requests merchant photos from Google Places. If the function was
+previously deployed, remove it and its server-side key from the hosted Supabase
+project from `divi_backend`:
+
+```sh
+npx supabase functions delete merchant-photo-lookup --project-ref <project-ref>
+npx supabase secrets unset GOOGLE_PLACES_API_KEY --project-ref <project-ref>
+npx supabase db push --project-ref <project-ref>
+```
+
+Also remove `GOOGLE_PLACES_API_KEY` from `divi_backend/supabase/.env` if you added it
+for local Edge Function development.
+
+The database migration drops the Place ID and photo-lookup state columns. Receipt
+address extraction/storage remains independent of Places, so the receipt-analysis
+Lambda does not need to be redeployed for this removal.

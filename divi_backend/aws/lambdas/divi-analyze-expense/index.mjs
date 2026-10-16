@@ -316,6 +316,8 @@ function normalizeAnalyzeExpense(response) {
       "NAME",
     ]) ?? "Scanned receipt";
 
+  const receiptAddress = extractVendorAddress(summaryFields);
+
   const taxMinorUnits = sumSummaryValues(summaryFields, [
     "TAX",
   ]);
@@ -360,6 +362,7 @@ function normalizeAnalyzeExpense(response) {
 
   return {
     title,
+    receiptAddress,
     items,
     taxMinorUnits,
     tipMinorUnits,
@@ -367,6 +370,30 @@ function normalizeAnalyzeExpense(response) {
     discounts,
     totalMinorUnits,
   };
+}
+
+function extractVendorAddress(fields) {
+  const vendorGroups = new Set(
+    fields
+      .filter((field) => field?.ExpenseGroupProperties?.some((group) => group?.Types?.includes("VENDOR")))
+      .flatMap((field) => field.ExpenseGroupProperties.map((group) => group.Id).filter(Boolean)),
+  );
+  const vendorFields = vendorGroups.size
+    ? fields.filter((field) => field?.ExpenseGroupProperties?.some((group) => vendorGroups.has(group?.Id)))
+    : fields.filter((field) => !field?.ExpenseGroupProperties?.length);
+  const addressField = vendorFields.find((field) =>
+    ["ADDRESS_BLOCK", "ADDRESS"].includes(field?.Type?.Text) &&
+    field?.ValueDetection?.Text?.trim(),
+  );
+  if (addressField) return addressField.ValueDetection.Text.trim();
+
+  const addressTypes = ["STREET", "CITY", "STATE", "ZIP_CODE", "COUNTRY"];
+  const parts = addressTypes
+    .map((type) => vendorFields.find((field) =>
+      field?.Type?.Text === type && field?.ValueDetection?.Text?.trim(),
+    )?.ValueDetection?.Text?.trim())
+    .filter(Boolean);
+  return parts.length ? [...new Set(parts)].join(", ") : undefined;
 }
 
 function normalizeLineItem(line) {

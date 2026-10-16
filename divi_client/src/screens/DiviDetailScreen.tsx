@@ -20,6 +20,7 @@ import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { Header } from '../components/navigation';
+import { ParticipantAvatar } from '../components/ParticipantAvatar';
 import { ReceiptPeek } from '../components/ReceiptPeek';
 import { PrimaryButton } from '../components/ui';
 import { allocationItemBreakdown, finalizeAllocations } from '../domain/allocation';
@@ -40,14 +41,12 @@ import { colors } from '../theme/theme';
 export function DiviDetailScreen({
   divi,
   onBack,
-  onBackToEdit,
   onAdjust,
   onSave,
   onFinalize,
 }: {
   divi: Divi;
   onBack: () => void;
-  onBackToEdit: () => void;
   onAdjust: () => void;
   onSave: (divi: Divi) => void;
   onFinalize: (divi: Divi) => void;
@@ -201,7 +200,10 @@ export function DiviDetailScreen({
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="dark" />
-      <Header title={local.title} onBack={onBackToEdit} />
+      <Header
+        title={local.title}
+        onClose={() => onSave({ ...local, state: 'claiming' })}
+      />
       <View style={styles.detailHero}>
         <View style={styles.detailHeroCopy}>
           <Text style={styles.heroEyebrow}>
@@ -248,12 +250,7 @@ export function DiviDetailScreen({
         </View>
       </ScrollView>
       <View style={styles.finalizeSection}>
-        <View style={styles.ctaRow}>
-          <SaveProgressButton onPress={() => onSave(local)} />
-          <View style={styles.ctaButtonFlex}>
-            <PrimaryButton title="Finalize Divi" onPress={finalize} />
-          </View>
-        </View>
+        <PrimaryButton title="Finalize Divi" onPress={finalize} />
       </View>
       <ReceiptPeek imageUri={local.receiptImageUri} />
       {invite && (
@@ -282,12 +279,13 @@ function ParticipantAvatarGroup({ participants }: { participants: Participant[] 
   return (
     <View style={styles.heroPeopleGroup}>
       {visibleParticipants.map((participant, index) => (
-        <View
+        <ParticipantAvatar
           key={participant.id}
+          participant={participant}
+          size={24}
           style={[styles.heroPeopleAvatar, index > 0 && styles.heroPeopleAvatarOverlap]}
-        >
-          <Text style={styles.heroPeopleInitial}>{participant.name.charAt(0).toUpperCase()}</Text>
-        </View>
+          initialStyle={styles.heroPeopleInitial}
+        />
       ))}
       {remaining > 0 && (
         <View style={[styles.heroPeopleAvatar, styles.heroPeopleAvatarOverlap]}>
@@ -423,7 +421,14 @@ function ParticipantChoice({
             color={selected ? colors.brandDeep : colors.secondary}
           />
         ) : (
-          <Text style={styles.participantChoiceInitial}>{participant?.name.charAt(0)}</Text>
+          participant && (
+            <ParticipantAvatar
+              participant={participant}
+              size={44}
+              style={styles.participantChoiceAvatar}
+              initialStyle={styles.participantChoiceInitial}
+            />
+          )
         )}
       </View>
       <Text
@@ -432,19 +437,6 @@ function ParticipantChoice({
       >
         {label}
       </Text>
-    </Pressable>
-  );
-}
-
-function SaveProgressButton({ onPress }: { onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Save Divi progress"
-      onPress={onPress}
-      style={styles.saveProgressButton}
-    >
-      <Ionicons name="save-outline" size={24} color={colors.surface} />
     </Pressable>
   );
 }
@@ -568,9 +560,12 @@ function AllocationPersonHeader({
 }) {
   return (
     <>
-      <View style={styles.allocationAvatar}>
-        <Text style={styles.allocationAvatarInitial}>{person.name.charAt(0).toUpperCase()}</Text>
-      </View>
+      <ParticipantAvatar
+        participant={person}
+        size={48}
+        style={styles.allocationAvatar}
+        initialStyle={styles.allocationAvatarInitial}
+      />
       <View style={styles.rowCopy}>
         <Text style={styles.rowTitle}>
           {person.name}
@@ -648,7 +643,7 @@ function InviteModal({
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <SafeAreaView style={styles.safe}>
-        <Header title="Invite" onBack={onClose} close />
+        <Header title="Invite" onClose={onClose} />
         <ScrollView contentContainerStyle={styles.invitePage}>
           <Text style={styles.pageTitle}>Join {divi.title}</Text>
           <View style={styles.qr}>
@@ -673,11 +668,12 @@ function InviteModal({
             <View style={styles.peopleRail}>
               {divi.participants.map((participant) => (
                 <View key={participant.id} style={styles.peoplePerson}>
-                  <View style={styles.peopleAvatar}>
-                    <Text style={styles.peopleAvatarInitial}>
-                      {participant.name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
+                  <ParticipantAvatar
+                    participant={participant}
+                    size={48}
+                    style={styles.peopleAvatar}
+                    initialStyle={styles.peopleAvatarInitial}
+                  />
                   <Text numberOfLines={1} style={styles.peopleName}>
                     {participant.name}
                   </Text>

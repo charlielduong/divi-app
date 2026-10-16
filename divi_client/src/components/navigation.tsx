@@ -113,7 +113,7 @@ export function TabBar({
         <Pressable accessibilityLabel="Create Divi" onPress={onCreate} style={styles.createButton}>
           <Ionicons name="add" size={34} color="#FFFFFF" />
         </Pressable>
-        <Text style={styles.tabLabel}>Create Divi</Text>
+        <Text style={[styles.tabLabel, styles.createTabLabel]}>Create Divi</Text>
       </View>
       <Tab
         icon="time-outline"
@@ -151,21 +151,41 @@ function Tab({
 export function Header({
   title,
   onBack,
-  close,
+  onClose,
 }: {
   title: string;
-  onBack: () => void;
-  close?: boolean;
+  onBack?: () => void;
+  onClose?: () => void;
 }) {
   return (
     <View style={styles.header}>
-      <Pressable onPress={onBack} hitSlop={12}>
-        <Ionicons name={close ? 'close' : 'arrow-back'} size={28} color={colors.ink} />
-      </Pressable>
+      {onBack ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          onPress={onBack}
+          hitSlop={12}
+        >
+          <Ionicons name="arrow-back" size={28} color={colors.ink} />
+        </Pressable>
+      ) : (
+        <View style={{ width: 28 }} />
+      )}
       <Text numberOfLines={1} style={styles.headerTitle}>
         {title}
       </Text>
-      <View style={{ width: 28 }} />
+      {onClose ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+          onPress={onClose}
+          hitSlop={12}
+        >
+          <Ionicons name="close" size={28} color={colors.ink} />
+        </Pressable>
+      ) : (
+        <View style={{ width: 28 }} />
+      )}
     </View>
   );
 }

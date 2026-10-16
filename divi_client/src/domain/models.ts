@@ -5,6 +5,8 @@ export type Money = { minorUnits: number; currencyCode: string };
 export type Participant = {
   id: string;
   name: string;
+  userId?: string;
+  avatarUrl?: string;
   phoneNumber?: string;
   venmoUsername?: string;
   isCurrentUser?: boolean;
@@ -36,6 +38,8 @@ export type Divi = {
   id: string;
   title: string;
   date: string;
+  createdAt?: string;
+  receiptAddress?: string;
   state: DiviState;
   creatorId: string;
   payerId: string;
