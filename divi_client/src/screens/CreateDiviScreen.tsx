@@ -129,11 +129,27 @@ export function CreateDiviScreen({
     setReceiptImageUri(null);
     setStage('source');
   };
+  const exitWithDraft = (currentDraft?: Divi) => {
+    const next =
+      currentDraft ??
+      (draft
+        ? { ...draft, receiptImageUri: receiptImageUri ?? draft.receiptImageUri }
+        : receiptImageUri
+          ? emptyReceiptDraft(receiptImageUri)
+          : null);
+    if (next) onSave({ ...next, state: 'draft' });
+    else onClose();
+  };
+  const backToPhotoConfirmation = (currentDraft: Divi) => {
+    setDraft(currentDraft);
+    setReceiptImageUri(currentDraft.receiptImageUri ?? null);
+    setStage(currentDraft.receiptImageUri ? 'confirm' : 'source');
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="dark" />
-      <Header title="Create Divi" onBack={onClose} close />
+      {stage !== 'review' && <Header title="Create Divi" onClose={() => exitWithDraft()} />}
       {stage === 'source' && (
         <View style={styles.centerPage}>
           <Ionicons name="scan-outline" size={92} color={colors.brand} />
@@ -185,7 +201,13 @@ export function CreateDiviScreen({
         </View>
       )}
       {stage === 'review' && draft && (
-        <ReceiptReview draft={draft} notice={parseNotice} onConfirm={onCreate} onSave={onSave} />
+        <ReceiptReview
+          draft={draft}
+          notice={parseNotice}
+          onConfirm={onCreate}
+          onClose={exitWithDraft}
+          onBackToPhoto={backToPhotoConfirmation}
+        />
       )}
     </SafeAreaView>
   );
@@ -195,12 +217,14 @@ function ReceiptReview({
   draft,
   notice,
   onConfirm,
-  onSave,
+  onClose,
+  onBackToPhoto,
 }: {
   draft: Divi;
   notice: string | null;
   onConfirm: (divi: Divi) => void;
-  onSave: (divi: Divi) => void;
+  onClose: (divi: Divi) => void;
+  onBackToPhoto: (divi: Divi) => void;
 }) {
   const [local, setLocal] = useState(draft);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -376,6 +400,11 @@ function ReceiptReview({
 
   return (
     <>
+      <Header
+        title="Create Divi"
+        onBack={() => onBackToPhoto({ ...local, enteredTotal: receiptTotal })}
+        onClose={() => onClose({ ...local, enteredTotal: receiptTotal })}
+      />
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.page}
@@ -483,34 +512,14 @@ function ReceiptReview({
         )}
       </ScrollView>
       <View style={styles.finalizeSection}>
-        <View style={styles.ctaRow}>
-          <SaveProgressButton
-            onPress={() => onSave({ ...local, enteredTotal: receiptTotal, state: 'draft' })}
-          />
-          <View style={styles.ctaButtonFlex}>
-            <PrimaryButton
-              disabled={local.items.length === 0 || !adjustmentsValid}
-              title="Start claiming"
-              onPress={() => onConfirm({ ...local, enteredTotal: receiptTotal, state: 'claiming' })}
-            />
-          </View>
-        </View>
+        <PrimaryButton
+          disabled={local.items.length === 0 || !adjustmentsValid}
+          title="Create Divi"
+          onPress={() => onConfirm({ ...local, enteredTotal: receiptTotal, state: 'claiming' })}
+        />
       </View>
       <ReceiptPeek imageUri={draft.receiptImageUri} />
     </>
-  );
-}
-
-function SaveProgressButton({ onPress }: { onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Save Divi progress"
-      onPress={onPress}
-      style={styles.saveProgressButton}
-    >
-      <Ionicons name="save-outline" size={24} color={colors.surface} />
-    </Pressable>
   );
 }
 

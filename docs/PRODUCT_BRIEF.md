@@ -250,6 +250,18 @@ Planned for a post-MVP release: deleting a Divi should use a recoverable two-ste
 
 The exact countdown duration, retention period, permanent-deletion policy, and behavior for Divis with active participants or unsettled balances remain open decisions. See [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
+### Claim activity and completion notifications
+
+Planned for a future release after app notifications are available: notify the Divi creator when participants make progress claiming receipt items, and prominently notify them when the Divi is ready to finalize.
+
+- When an external participant claims one or more items, make it possible to notify the Divi app user who created the Divi. Include the participant's name and the Divi so the creator can review the updated claims.
+- Send a higher-priority completion notification when all participants have completed claiming and the Divi is ready for the creator to finalize. Suggested copy: **“Everyone has picked their items. Review and finalize the bill.”** Include a direct action to open that Divi.
+- Treat claim completion and finalization readiness as related but distinct: all items must have at least one claimant, participant claiming must be complete, and the receipt must reconcile before prompting the creator to finalize.
+- Deliver notifications through the future notification service, respect user notification preferences and platform permissions, and do not change claims or finalize the Divi automatically.
+- Make event delivery idempotent and avoid repeating the completion alert for the same ready state. If claims change after the alert, recalculate readiness and allow a new alert only after the Divi becomes ready again.
+
+Notification channel, participant completion semantics, creator preferences, and reminder timing are open decisions. See [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
+
 ## 10. Architecture and Delivery Summary
 
 The selected foundation is React Native 0.86, React 19, Expo SDK 57, and TypeScript with a Supabase/PostgreSQL backend, Supabase Auth, and replaceable application-owned service boundaries. Local development uses the Supabase CLI Docker stack; the current client persists authenticated Divis through the repository layer. Receipt OCR remains on-device and receipt images are not uploaded by the current flow.

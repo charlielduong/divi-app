@@ -1,7 +1,10 @@
 import { currentUser, Divi, money, ReceiptAdjustment, ReceiptItem } from '../domain/models';
+import { todayReceiptDate } from '../domain/receiptDate';
 
 export type ParsedReceipt = {
   title: string;
+  date?: string;
+  receiptAddress?: string;
   items: Array<{ name: string; quantity: number; amountMinorUnits: number }>;
   taxMinorUnits: number;
   tipMinorUnits: number;
@@ -9,6 +12,40 @@ export type ParsedReceipt = {
   discounts: Array<{ name: string; amountMinorUnits: number }>;
   totalMinorUnits?: number;
 };
+
+function extractReceiptDate(text: string): string | undefined {
+  const source = text.replace(/\s+/g, ' ');
+  const candidates: Array<{ year: number; month: number; day: number }> = [];
+  const numeric = /\b(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b/g;
+  for (const match of source.matchAll(numeric)) {
+    const month = Number(match[1]);
+    const day = Number(match[2]);
+    const shortYear = Number(match[3]);
+    const year =
+      match[3].length === 2 ? (shortYear < 70 ? 2000 + shortYear : 1900 + shortYear) : shortYear;
+    candidates.push({ year, month, day });
+  }
+  const iso = /\b(\d{4})-(\d{1,2})-(\d{1,2})\b/g;
+  for (const match of source.matchAll(iso)) {
+    candidates.push({ year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) });
+  }
+
+  for (const candidate of candidates) {
+    const date = new Date(candidate.year, candidate.month - 1, candidate.day);
+    if (
+      date.getFullYear() === candidate.year &&
+      date.getMonth() === candidate.month - 1 &&
+      date.getDate() === candidate.day
+    ) {
+      return [
+        candidate.year,
+        String(candidate.month).padStart(2, '0'),
+        String(candidate.day).padStart(2, '0'),
+      ].join('-');
+    }
+  }
+  return undefined;
+}
 
 type MoneyMatch = {
   amountMinorUnits: number;
@@ -368,6 +405,7 @@ export function parseReceiptText(rawText: string, blocks: ReceiptOcrBlock[] = []
   const lines = blockLines ?? coalesceReceiptLines(rawText);
   const parsed: ParsedReceipt = {
     title: firstMerchantLine(lines, blocks),
+    date: extractReceiptDate(`${rawText}\n${blocks.map((block) => block.text).join('\n')}`),
     items: [],
     taxMinorUnits: 0,
     tipMinorUnits: 0,
@@ -405,7 +443,9 @@ export function parseReceiptText(rawText: string, blocks: ReceiptOcrBlock[] = []
       pendingItemName = null;
       return;
     }
-    if (/\b(?:grand\s+total|amount\s+due|balance(?:\s+due)?|net\s+sales|total)\b/.test(classification)) {
+    if (
+      /\b(?:grand\s+total|amount\s+due|balance(?:\s+due)?|net\s+sales|total)\b/.test(classification)
+    ) {
       parsed.totalMinorUnits = Math.abs(amount);
       pendingItemName = null;
       return;
@@ -490,7 +530,8 @@ export function receiptDraftFromParsed(parsed: ParsedReceipt, receiptImageUri?: 
   return {
     id: `divi-${Date.now()}`,
     title: parsed.title,
-    date: new Date().toISOString(),
+    receiptAddress: parsed.receiptAddress,
+    date: parsed.date ?? todayReceiptDate(),
     state: 'draft',
     creatorId: currentUser.id,
     payerId: currentUser.id,

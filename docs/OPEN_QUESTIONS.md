@@ -53,6 +53,15 @@ These decisions are intentionally unresolved. Defaults may be used for local dev
 - Which Venmo payment-link format is supported for a participant, and what fallback should be shown when only a username is available or deep-link fields are unsupported?
 - Should a participant be able to change or remove their phone number after joining but before finalization?
 
+## Claim Progress Notifications
+
+- Which notification channels are planned for claim updates: push, in-app, or both, and what user permissions/preferences should control them?
+- Should the creator receive a notification for every external participant claim, or should individual updates be grouped or configurable?
+- What exactly counts as a participant having completed their claims, especially when someone has no items to claim or has only claimed some items?
+- Should the finalization-ready notification require every participant to have an item, every receipt item to have a claimant, or both, in addition to reconciliation?
+- How should claim changes after a completion notification reset readiness, deduplicate events, or trigger another notification?
+- Should the creator receive a reminder if a Divi stays ready to finalize without action, and what frequency/quiet-hour rules should apply?
+
 ## Privacy and Operations
 
 - What are the production retention periods for receipts, parse metadata, financial history, and deleted-account data?

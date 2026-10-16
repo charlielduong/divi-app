@@ -8,6 +8,7 @@ import {
   ReceiptAdjustment,
   ReceiptItem,
 } from '../domain/models';
+import { toReceiptDate } from '../domain/receiptDate';
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 type Row = Record<string, any>;
@@ -34,17 +35,25 @@ const participantIsCurrentUser = (participant: Participant, user: User) =>
   participant.isCurrentUser || participant.id === user.id;
 
 async function loadDivi(diviId: string, userId: string): Promise<Divi> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const signedInUser = sessionData.session?.user;
+  const signedInAvatarUrl =
+    signedInUser?.id === userId
+      ? String(signedInUser.user_metadata?.avatar_url ?? signedInUser.user_metadata?.picture ?? '') ||
+        undefined
+      : undefined;
   const row = (await getData(
     supabase.from('divis').select('*').eq('id', diviId).single(),
   )) as Row | null;
   if (!row) throw new Error('Divi not found.');
 
-  const [participants, receipt, allocations] = await Promise.all([
+  const [participants, receipt, allocations, participantAvatars] = await Promise.all([
     getData(
       supabase.from('divi_participants').select('*').eq('divi_id', diviId).order('joined_at'),
     ),
     getData(supabase.from('receipts').select('*').eq('divi_id', diviId).maybeSingle()),
     getData(supabase.from('divi_allocations').select('*').eq('divi_id', diviId)),
+    getData(supabase.rpc('get_divi_participant_avatars', { p_divi_id: diviId })),
   ]);
 
   const [items, adjustments, claims] = receipt
@@ -74,6 +83,11 @@ async function loadDivi(diviId: string, userId: string): Promise<Divi> {
   const adjustmentRows = (adjustments ?? []) as Row[];
   const participantRows = (participants ?? []) as Row[];
   const allocationRows = (allocations ?? []) as Row[];
+  const avatarUrlByParticipantId = new Map<string, string>(
+    ((participantAvatars ?? []) as Row[])
+      .filter((avatar) => typeof avatar.avatar_url === 'string' && avatar.avatar_url.length > 0)
+      .map((avatar) => [avatar.participant_id, avatar.avatar_url]),
+  );
   const currencyCode = row.currency_code ?? 'USD';
   const feeRows = adjustmentRows.filter((adjustment) => adjustment.kind === 'fee');
   const discountRows = adjustmentRows.filter((adjustment) => adjustment.kind === 'discount');
@@ -82,12 +96,18 @@ async function loadDivi(diviId: string, userId: string): Promise<Divi> {
     id: row.id,
     title: row.title,
     date: row.receipt_date ?? row.created_at,
+    createdAt: row.created_at ?? undefined,
+    receiptAddress: receipt?.receipt_address ?? undefined,
     state: row.state,
     creatorId: row.creator_id,
     payerId: row.payer_id ?? row.creator_id,
     participants: participantRows.map((participant) => ({
       id: participant.id,
       name: participant.display_name,
+      userId: participant.user_id ?? undefined,
+      avatarUrl:
+        avatarUrlByParticipantId.get(participant.id) ??
+        (participant.user_id === userId ? signedInAvatarUrl : undefined),
       phoneNumber: participant.phone_number ?? undefined,
       venmoUsername: participant.venmo_username ?? undefined,
       isCurrentUser: participant.user_id === userId,
@@ -140,13 +160,21 @@ export async function saveDivi(user: User, divi: Divi): Promise<Divi> {
     throw new Error('Your sign-in session is no longer valid. Please sign in again.');
   }
 
+  const snapshot = { ...divi, date: toReceiptDate(divi.date) };
   const { data: savedDiviId, error: saveError } = await supabase.rpc('save_divi_snapshot', {
-    p_snapshot: divi,
+    p_snapshot: snapshot,
   });
   if (saveError) throw new Error(saveError.message);
   if (typeof savedDiviId !== 'string') {
     throw new Error('The saved Divi did not return a valid ID.');
   }
+
+  await getData(
+    supabase
+      .from('receipts')
+      .update({ receipt_address: divi.receiptAddress ?? null })
+      .eq('divi_id', savedDiviId),
+  );
 
   return loadDivi(savedDiviId, authData.user.id);
 }
@@ -167,7 +195,7 @@ async function saveDiviLegacy(user: User, divi: Divi): Promise<Divi> {
         .update({
           title: divi.title,
           payer_id: activeUser.id,
-          receipt_date: divi.date.slice(0, 10),
+          receipt_date: toReceiptDate(divi.date),
           state: divi.state,
           currency_code: currencyCode,
         })
@@ -179,7 +207,7 @@ async function saveDiviLegacy(user: User, divi: Divi): Promise<Divi> {
       creator_id: activeUser.id,
       payer_id: activeUser.id,
       title: divi.title,
-      receipt_date: divi.date.slice(0, 10),
+      receipt_date: toReceiptDate(divi.date),
       state: divi.state,
       currency_code: currencyCode,
     };
@@ -226,7 +254,8 @@ async function saveDiviLegacy(user: User, divi: Divi): Promise<Divi> {
   const receiptPayload = {
     divi_id: diviId,
     image_uri: divi.receiptImageUri ?? null,
-    receipt_date: divi.date.slice(0, 10),
+    receipt_address: divi.receiptAddress ?? null,
+    receipt_date: toReceiptDate(divi.date),
     tax_minor_units: divi.tax.minorUnits,
     tip_minor_units: divi.tip.minorUnits,
     entered_total_minor_units: divi.enteredTotal.minorUnits,

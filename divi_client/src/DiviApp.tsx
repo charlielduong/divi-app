@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Platform, SafeAreaView, View, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { Session } from '@supabase/supabase-js';
 import { DesktopSidebar, TabBar, TabName } from './components/navigation';
 import { Divi } from './domain/models';
@@ -10,7 +11,7 @@ import {
   HomeScreen,
   ProfileScreen,
   ReceiptsScreen,
-  SimpleListScreen,
+  ComingSoonScreen,
   WelcomeScreen,
 } from './screens/HomeScreens';
 import { appStyles as styles } from './theme/appStyles';
@@ -36,7 +37,6 @@ export default function DiviApp() {
   const [tab, setTab] = useState<TabName>('home');
   const [route, setRoute] = useState<Route>({ name: 'root' });
   const [divis, setDivis] = useState<Divi[]>([]);
-  const [activity, setActivity] = useState<string[]>([]);
 
   useEffect(() => {
     if (!session) {
@@ -132,9 +132,7 @@ export default function DiviApp() {
 
     try {
       const saved = await saveDiviToDatabase(session!.user, next);
-      const existing = previousDivis.some((item) => item.id === saved.id);
       replaceDivi(saved);
-      if (!existing) setActivity((items) => [`Created ${saved.title}`, ...items]);
       if (!wasPersisted) {
         if (destination === 'detail') setRoute({ name: 'detail', id: saved.id });
         else setRoute({ name: 'root' });
@@ -164,6 +162,18 @@ export default function DiviApp() {
 
   const saveDivi = (next: Divi) => void persistDivi(next, 'detail');
   const saveProgress = (next: Divi) => void persistDivi(next, 'root');
+  const refreshDivis = async () => {
+    if (!session) return;
+    try {
+      const saved = await loadUserDivis(session.user.id);
+      setDivis(saved);
+    } catch (error) {
+      Alert.alert(
+        'Could not refresh your Divis',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
+    }
+  };
   const openDivi = (id: string) => {
     const divi = divis.find((item) => item.id === id);
     if (divi?.state === 'draft') setRoute({ name: 'create', draft: divi });
@@ -192,7 +202,6 @@ export default function DiviApp() {
         <DiviDetailScreen
           divi={divi}
           onBack={() => setRoute({ name: 'root' })}
-          onBackToEdit={() => setRoute({ name: 'create', draft: divi })}
           onAdjust={() => setRoute({ name: 'create', draft: divi })}
           onSave={saveProgress}
           onFinalize={saveDivi}
@@ -200,49 +209,99 @@ export default function DiviApp() {
       );
   }
   return (
-    <SafeAreaView style={[styles.safe, isDesktop && styles.desktopSafe]}>
-      <StatusBar style="dark" />
-      <View style={[styles.app, isDesktop && styles.desktopApp]}>
-        {isDesktop && (
-          <DesktopSidebar
-            selected={tab}
-            onSelect={setTab}
-            onCreate={() => setRoute({ name: 'create' })}
-          />
-        )}
-        <View style={[styles.desktopMain, !isDesktop && styles.flex]}>
-          {tab === 'home' && (
-            <HomeScreen
-              divis={divis}
-              onOpen={openDivi}
-              onDelete={deleteDivi}
-              onViewReceipts={() => setTab('receipts')}
-              isDesktop={isDesktop}
-            />
-          )}
-          {tab === 'receipts' && (
-            <ReceiptsScreen divis={divis} onOpen={openDivi} onDelete={deleteDivi} />
-          )}
-          {tab === 'activity' && (
-            <SimpleListScreen title="Activity" rows={activity} icon="time-outline" />
-          )}
-          {tab === 'profile' && (
-            <ProfileScreen
-              user={session.user}
-              onSignOut={() => {
-                void supabase.auth.signOut();
-              }}
-            />
-          )}
-          {!isDesktop && (
-            <TabBar
+    <View style={styles.appRoot}>
+      {tab === 'home' && !isDesktop && (
+        <LinearGradient
+          pointerEvents="none"
+          colors={['#FAFBF9', 'rgba(250,251,249,0.8)', 'rgba(250,251,249,0)']}
+          locations={[0, 0.62, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.homeTopBackdrop}
+        />
+      )}
+      <SafeAreaView
+        style={[
+          styles.safe,
+          isDesktop && styles.desktopSafe,
+          tab === 'home' && styles.homeSafe,
+          tab === 'receipts' && styles.receiptsSafe,
+          tab === 'profile' && styles.profileSafe,
+        ]}
+      >
+        <StatusBar style="dark" />
+        <View style={[styles.app, isDesktop && styles.desktopApp]}>
+          {isDesktop && (
+            <DesktopSidebar
               selected={tab}
               onSelect={setTab}
               onCreate={() => setRoute({ name: 'create' })}
             />
           )}
+          <View style={[styles.desktopMain, !isDesktop && styles.flex]}>
+            {tab === 'home' && (
+              <HomeScreen
+                divis={divis}
+                onContinue={openDivi}
+                onAdjust={(id) => {
+                  const divi = divis.find((item) => item.id === id);
+                  if (divi) setRoute({ name: 'create', draft: divi });
+                }}
+                onDelete={deleteDivi}
+                onRefresh={refreshDivis}
+                isDesktop={isDesktop}
+              />
+            )}
+            {tab === 'receipts' && (
+              <ReceiptsScreen
+                divis={divis}
+                userId={session.user.id}
+                onOpen={openDivi}
+                onAdjust={(id) => {
+                  const divi = divis.find((item) => item.id === id);
+                  if (divi) setRoute({ name: 'create', draft: divi });
+                }}
+                onDelete={deleteDivi}
+                onRefresh={refreshDivis}
+                isDesktop={isDesktop}
+              />
+            )}
+            {tab === 'activity' && (
+              <ComingSoonScreen />
+            )}
+            {tab === 'profile' && (
+              <ProfileScreen
+                user={session.user}
+                divis={divis}
+                onOpen={openDivi}
+                onAdjust={(id) => {
+                  const divi = divis.find((item) => item.id === id);
+                  if (divi) setRoute({ name: 'create', draft: divi });
+                }}
+                onDelete={deleteDivi}
+                onRefresh={refreshDivis}
+                onUpdateName={async (name) => {
+                  const { error } = await supabase.auth.updateUser({
+                    data: { full_name: name, name },
+                  });
+                  if (error) throw new Error(error.message);
+                }}
+                onSignOut={() => {
+                  void supabase.auth.signOut();
+                }}
+                isDesktop={isDesktop}
+              />
+            )}
+            {!isDesktop && (
+              <TabBar
+                selected={tab}
+                onSelect={setTab}
+                onCreate={() => setRoute({ name: 'create' })}
+              />
+            )}
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
